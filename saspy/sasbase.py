@@ -39,21 +39,14 @@
 import os
 import sys
 import re
-# from pdb import set_trace as bp
 import logging
+import getpass
+import tempfile
 
 try:
    import pandas as pd
 except ImportError:
    pass
-
-try:
-   import saspy.sascfg_personal as SAScfg
-except ImportError:
-   try:
-      import sascfg_personal as SAScfg
-   except ImportError:
-      import saspy.sascfg as SAScfg
 
 try:
     import saspy.sasiostdio as sasiostdio
@@ -83,10 +76,41 @@ class SASconfig:
     """
 
     def __init__(self, **kwargs):
-        configs = []
+        configs      = []
         self._kernel = kwargs.get('kernel', None)
-        self.valid = True
-        self.mode = ''
+        self.valid   = True
+        self.mode    = ''
+
+        cfgfile = kwargs.get('cfgfile', None)
+        if cfgfile:
+           tempdir = tempfile.TemporaryDirectory()
+           try:
+              fdin = open(cfgfile)
+           except:
+              print("Couldn't open cfgfile "+cfgfile)
+              cfgfile = None
+
+           if cfgfile:
+              f1 = fdin.read()
+              fdout = open(tempdir.name+os.sep+"sascfgfile.py",'w')
+              fdout.write(f1)
+              fdout.close()
+              fdin.close()
+              sys.path.append(tempdir.name)
+              import sascfgfile as SAScfg
+              tempdir.cleanup()
+              sys.path.remove(tempdir.name)
+
+        if not cfgfile:
+           try:
+              import saspy.sascfg_personal as SAScfg
+           except ImportError:
+              try:
+                 import sascfg_personal as SAScfg
+              except ImportError:
+                 import saspy.sascfg as SAScfg
+
+        self.SAScfg  = SAScfg
 
         # GET Config options
         try:

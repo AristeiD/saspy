@@ -22,14 +22,6 @@ import tempfile
 from time import sleep
 
 try:
-   import saspy.sascfg_personal as SAScfg
-except ImportError:
-   try:
-      import sascfg_personal as SAScfg
-   except ImportError:
-      import saspy.sascfg as SAScfg
-
-try:
    import pandas as pd
 except ImportError:
    pass
@@ -42,21 +34,21 @@ class SASconfigSTDIO:
    '''
    This object is not intended to be used directly. Instantiate a SASsession object instead
    '''
-   def __init__(self, **kwargs):
-      self._kernel  = kwargs.get('kernel', None)
-
-      self.name     = kwargs.get('sascfgname', '')
-      cfg           = getattr(SAScfg, self.name)
-
-      self.saspath  = cfg.get('saspath', '')
-      self.options  = cfg.get('options', [])
-      self.ssh      = cfg.get('ssh', '')
-      self.tunnel   = cfg.get('tunnel', None)
-      self.port     = cfg.get('port', None)
-      self.host     = cfg.get('host', '')
-      self.encoding = cfg.get('encoding', '')
-      self.metapw   = cfg.get('metapw', '')
-      self.iomc     = cfg.get('iomc', '')
+   def __init__(self, session, **kwargs):
+      self._kernel   = kwargs.get('kernel', None)
+      SAScfg         = session._sb.sascfg.SAScfg
+      self.name      = session._sb.sascfg.name
+      cfg            = getattr(SAScfg, self.name)
+                    
+      self.saspath   = cfg.get('saspath', '')
+      self.options   = cfg.get('options', [])
+      self.ssh       = cfg.get('ssh', '')
+      self.tunnel    = cfg.get('tunnel', None)
+      self.port      = cfg.get('port', None)
+      self.host      = cfg.get('host', '')
+      self.encoding  = cfg.get('encoding', '')
+      self.metapw    = cfg.get('metapw', '')
+      self.iomc      = cfg.get('iomc', '')
 
       try:
          self.outopts = getattr(SAScfg, "SAS_output_options")
@@ -131,24 +123,10 @@ class SASconfigSTDIO:
       if not self.encoding:
          self.encoding = 'utf-8'
 
-   def _prompt(self, prompt, pw=False):
-      if self._kernel is None:
-          if not pw:
-              try:
-                 return input(prompt)
-              except (KeyboardInterrupt):
-                 return None
-          else:
-              try:
-                 return getpass.getpass(prompt)
-              except (KeyboardInterrupt):
-                 return None
-      else:
-          try:
-             return self._kernel._input_request(prompt, self._kernel._parent_ident, self._kernel._parent_header,
-                                                password=pw)
-          except (KeyboardInterrupt):
-             return None
+      self._prompt = session._sb.sascfg._prompt
+
+      return
+
 
 class SASsessionSTDIO():
    '''
@@ -170,10 +148,10 @@ class SASsessionSTDIO():
       self.stderr = None
       self.stdout = None
 
-      self.sascfg   = SASconfigSTDIO(**kwargs)
+      self._sb      = kwargs.get('sb', None)
+      self.sascfg   = SASconfigSTDIO(self, **kwargs)
       self._log_cnt = 0
       self._log     = ""
-      self._sb      = kwargs.get('sb', None)
 
       self._startsas()
 

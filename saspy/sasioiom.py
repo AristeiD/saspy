@@ -22,14 +22,6 @@ import socket as socks
 import tempfile
 
 try:
-   import saspy.sascfg_personal as SAScfg
-except ImportError:
-   try:
-      import sascfg_personal as SAScfg
-   except ImportError:
-      import saspy.sascfg as SAScfg
-
-try:
    import pandas as pd
 except ImportError:
    pass
@@ -47,10 +39,10 @@ class SASconfigIOM:
    '''
    This object is not intended to be used directly. Instantiate a SASsession object instead
    '''
-   def __init__(self, **kwargs):
-      self._kernel  = kwargs.get('kernel', None)
-
-      self.name      = kwargs.get('sascfgname', '')
+   def __init__(self, session, **kwargs):
+      self._kernel   = kwargs.get('kernel', None)
+      SAScfg         = session._sb.sascfg.SAScfg
+      self.name      = session._sb.sascfg.name
       cfg            = getattr(SAScfg, self.name)
 
       self.java      = cfg.get('java', '')
@@ -174,26 +166,10 @@ class SASconfigIOM:
          else:
             self.javaparms = injparms
 
+      self._prompt = session._sb.sascfg._prompt
+
       return
 
-   def _prompt(self, prompt, pw=False):
-      if self._kernel is None:
-          if not pw:
-              try:
-                 return input(prompt)
-              except (KeyboardInterrupt):
-                 return None
-          else:
-              try:
-                 return getpass.getpass(prompt)
-              except (KeyboardInterrupt):
-                 return None
-      else:
-          try:
-             return self._kernel._input_request(prompt, self._kernel._parent_ident, self._kernel._parent_header,
-                                                password=pw)
-          except (KeyboardInterrupt):
-             return None
 
 class SASsessionIOM():
    '''
@@ -215,10 +191,10 @@ class SASsessionIOM():
       self.stderr = None
       self.stdout = None
 
-      self.sascfg   = SASconfigIOM(**kwargs)
+      self._sb      = kwargs.get('sb', None)
+      self.sascfg   = SASconfigIOM(self, **kwargs)
       self._log_cnt = 0
       self._log     = ""
-      self._sb      = kwargs.get('sb', None)
       self._tomods1 = b"_tomods1"
 
       self._startsas()
